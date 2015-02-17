@@ -1,0 +1,10 @@
+ipython==2.4.1
+Jinja2==2.7.3
+matplotlib==1.4.2
+numpy==1.9.1
+Pygments==2.0.2
+pyzmq==14.5.0
+segeval==2.0.11
+Sphinx==1.2.3
+tornado==4.1
+brewer2mpl==1.4.1
