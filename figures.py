@@ -14,8 +14,17 @@ LIGHT_GRAY = np.array([float(248)/float(255)]*3)
 def title_to_filename(title):
     return title.lower().replace(' ', '-')
 
+def plot(x, y, xlabel, ylabel):
+    fit = np.polyfit(x, y, 1)
+    plt.plot(x, y, 'k.')
+    plt.plot(x, np.polyval(fit, x), 'k--')
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.savefig(title_to_filename(xlabel+' vs '+ylabel) + '.svg')
+    plt.show()
+
 # Draw a Cleveland-style dot plot with possibly multiple values per label
-def dot_plot(values, labels, title,
+def dot_plot(values, labels, title, sort=True,
              value_labels=None, minv=None, draw_mean_std=False, color_offset=0):
 
     if len(values) == 0: return
@@ -35,11 +44,13 @@ def dot_plot(values, labels, title,
         colors = qualitative.Set2[len(values) + color_offset].mpl_colors[color_offset:]
     else:
         colors = [ ALMOST_BLACK ]
-    
-    # order by mean of the multiple values
-    means = [ np.mean(np.array(list(v), dtype=float)) for v in zip(*values) ]
-    ordered = list(zip(*sorted(zip(*[means] + [labels] + values))))
-    labels, values = ordered[1], ordered[2:]
+
+    if sort:
+        # order by mean of the multiple values
+        means = [ np.mean(np.array(list(v), dtype=float)) for v in zip(*values) ]
+        ordered = list(zip(*sorted(zip(*[means] + [labels] + values))))
+        labels, values = ordered[1], ordered[2:]
+
     y = range(len(labels))
 
     if minv is None:

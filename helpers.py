@@ -142,6 +142,9 @@ def boundary_ratios_for(dataset):
             d[item][coder] = (actual_boundaries, possible_boundaries)
     return d
 
+def all_segmentations_of(dataset, item):
+    return list(it.chain.from_iterable(dataset[item].values()))
+
 def null_segmentations_for(dataset):
     return se.data.Dataset({ item: { 'NULL': (total_mass(dataset, item),) } 
                              for item in dataset.keys() })
