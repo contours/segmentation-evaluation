@@ -16,16 +16,20 @@ def title_to_filename(title):
 
 def plot(x, y, xlabel, ylabel):
     fit = np.polyfit(x, y, 1)
-    plt.plot(x, y, 'k.')
-    plt.plot(x, np.polyval(fit, x), 'k--')
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
+    plt.plot(x, y, marker='.', linestyle='None', color=ALMOST_BLACK)
+    plt.plot(x, np.polyval(fit, x), linestyle='--', color=DARK_GRAY)
+    plt.tick_params(colors=ALMOST_BLACK)
+    plt.xlabel(xlabel, color=ALMOST_BLACK)
+    plt.ylabel(ylabel, color=ALMOST_BLACK)
+    for spine in plt.gca().spines.values():
+        spine.set_color(ALMOST_BLACK)
     plt.savefig(title_to_filename(xlabel+' vs '+ylabel) + '.svg')
     plt.show()
 
 # Draw a Cleveland-style dot plot with possibly multiple values per label
 def dot_plot(values, labels, title, sort=True,
-             value_labels=None, minv=None, draw_mean_std=False, color_offset=0):
+             value_labels=None, minv=None, draw_mean_std=False,
+             color_offset=0, draw_line=None):
 
     if len(values) == 0: return
     
@@ -76,6 +80,11 @@ def dot_plot(values, labels, title, sort=True,
     
     for v, color, label in zip(values, colors, value_labels):
         plt.plot(v, y, 'o', color=color, alpha=0.75, label=label)
+
+    if draw_line is not None:
+        if draw_mean_std:
+            raise Exception('Cannot use draw_line and draw_mean_std together')
+        plt.vlines(draw_line, 0, len(labels)-1, colors=[ALMOST_BLACK])
         
     if draw_mean_std:
         mean, std, n = mean_std_n(values)
