@@ -29,15 +29,28 @@ def load_dataset(name):
         *[ set(data.keys()) for data in dataset.values() ])))
     return dataset
 
+def rename_coders(dataset, old_names, suffix):
+    if len(set.intersection(set(old_names), set(dataset.coders))) == 0:
+        return dataset
+    rename = lambda x: x+suffix if x in old_names else x
+    d = se.data.Dataset(
+        { item: { rename(c):s for c,s in segmentations.items() }
+          for item, segmentations in dataset.items() })
+    d.coders = tuple(map(rename, dataset.coders))
+    return d
+
 def merge_datasets(*datasets):
-    items = set.intersection(*[ set(dataset.keys()) for dataset in datasets ])
-    dataset = se.data.Dataset(
+    repeated_coders = set.intersection(*[ set(d.coders)
+                                          for d in datasets ])
+    ds = [datasets[0]] + [ rename_coders(d, repeated_coders, '-%s' % i)
+                           for i, d in enumerate(datasets[1:], start=1) ]
+    items = set.intersection(*[ set(d.keys()) for d in ds ])
+    merged = se.data.Dataset(
         { item: { c:s for c,s in it.chain.from_iterable(
-            [ d[item].items() for d in datasets ]) }
+            [ d[item].items() for d in ds ]) }
           for item in items })
-    dataset.coders = tuple(sorted(set.intersection(
-        *[ set(data.keys()) for data in dataset.values() ])))
-    return dataset
+    merged.coders = tuple(it.chain(*[ d.coders for d in ds ]))
+    return merged
 
 def micro_mean(ratios):
     num, den = [ sum(values) for values in zip(*ratios) ]
