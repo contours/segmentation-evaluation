@@ -112,9 +112,9 @@ def dot_plot(values, labels, title, sort=True,
 
 # Draw a box-and-whisker plot
 def box_plot(values, labels, title):
-
-    medians = [ np.median(np.array(v, dtype=float)) for v in values ]
-    medians, values, labels = zip(*sorted(zip(medians, values, labels)))
+    values = [ np.array(v, dtype=float) for v in values ]
+    medians = [ np.median(v) for v in values ]
+    medians, values, labels = zip(*sorted(zip(medians, values, labels), key=lambda x: x[0]))
     bp = plt.boxplot(values, sym='', vert=False, widths=0.7)
 
     plt.setp(bp['boxes'], color=ALMOST_BLACK, linewidth=0.5)
@@ -156,6 +156,7 @@ def bar_chart(values, labels, value_labels, title):
     plt.show()
 
 def histogram(values, bins, title):
+    values = np.array(values, dtype=float)
     plt.hist(values, bins=bins, color=DARK_GRAY, edgecolor=DARK_GRAY)
     plt.xlabel(title, color=ALMOST_BLACK)
     plt.savefig(title_to_filename(title) + '.svg')
