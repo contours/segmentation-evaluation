@@ -3,6 +3,7 @@ import math
 import segeval as se
 import numpy as np
 import itertools as it
+import functools
 import collections
 import random
 
@@ -52,32 +53,49 @@ def merge_datasets(*datasets):
     merged.coders = tuple(it.chain(*[ d.coders for d in ds ]))
     return merged
 
-def micro_mean(ratios):
-    num, den = [ sum(values) for values in zip(*ratios) ]
-    return num / den    
-
-def micro_mean_std_n(ratios):
-    mean = micro_mean(ratios)
-    scores = [ (n/d) for n,d in ratios ]
-    squared_deviations = [ abs(s - mean)**2 for s in scores ]
-    std = np.sqrt(np.mean(squared_deviations))
-    return (mean, std, len(ratios))
-
-def micro_mean_std_n_str(ratios):
-    return '{0:.4f} ±{1:.4f}, n={2}'.format(*micro_mean_std_n(ratios))
-
 def mean_std_n(values):
     floats = np.array(list(values), dtype=float)
-    return (np.mean(floats), np.std(floats), len(floats))
+    # ddof=1 means calculate sample std dev
+    return (np.mean(floats), np.std(floats, ddof=1), len(floats))
 
 def mean_std_n_str(values):
     return '{0:.4f} ±{1:.4f}, n={2}'.format(*mean_std_n(values))
 
-def b_statistics(dataset):
-    return se.boundary_statistics(dataset, n_t=MAX_TRANSPOSE_DISTANCE)
+def mean_ci_n(values):
+    mean, sd, n = mean_std_n(values)
+    se = sd / np.sqrt(n)
+    ci = 1.96 * se
+    return mean, ci, n
+
+def mean_ci_n_str(values):
+    return '{0:.4f} ±{1:.4f} (95% CI), n={2}'.format(*mean_ci_n(values))
+
+def b_confusion(hypothesis, reference):
+    def sum_matrices(a,b):
+        m = se.ConfusionMatrix()
+        classes = a.classes() | b.classes()
+        for c1,c2 in it.product(classes,classes):
+            m[c1][c2] = a[c1][c2] + b[c1][c2]
+        return m
+    cms = se.boundary_confusion_matrix(hypothesis, reference, n_t=MAX_TRANSPOSE_DISTANCE)
+    return functools.reduce(sum_matrices, cms.values())
+
+def b_statistics(*datasets):
+    return se.boundary_statistics(*datasets, n_t=MAX_TRANSPOSE_DISTANCE)
 
 def b(*datasets, return_parts=False):
     return se.boundary_similarity(*datasets, n_t=MAX_TRANSPOSE_DISTANCE, return_parts=return_parts)
+
+def boundary_pair_scores(total_score, n_pairs, additions, _, transpositions):
+    n_matches = n_pairs - len(additions) - len(transpositions)
+    scores = (((Decimal(1),) * n_matches) +
+              ((Decimal(0),) * len(additions)) +
+              tuple([ (1 - (abs(t[0]-t[1]) / Decimal(MAX_TRANSPOSE_DISTANCE))) for t in transpositions ]))
+    return scores
+
+def b_pairwise(dataset):
+    return { label: boundary_pair_scores(*parts)
+             for label, parts in b(dataset, return_parts=True).items() }
 
 def wd(dataset):
     return se.window_diff(dataset)
@@ -113,10 +131,10 @@ def bias(dataset):
     return se.artstein_poesio_bias_linear(dataset, n_t=MAX_TRANSPOSE_DISTANCE)
 
 def pairwise_similarity(dataset, coder, item):
-    ratios = [ v[:2] for k,v in b(dataset, return_parts=True).items() 
-               if (coder in k) and (item in k) ]
-    return micro_mean(ratios)
-    
+    scores = tuple(it.chain(*[ v for k,v in b_pairwise(dataset).items()
+                               if (coder in k) and (item in k) ]))
+    return mean_std_n(scores)[0]
+
 def strip_prefixes(strings):
     return [ s.split(':')[-1] for s in strings ]
 
@@ -143,8 +161,13 @@ def boundaries_placed(dataset, coder=None):
 def potential_boundaries(dataset):
     return sum([ (total_mass(dataset, item) - 1) for item in dataset.keys() ])
 
-def boundary_placement_rate(dataset, coder):
-    return boundaries_placed(dataset, coder) / potential_boundaries(dataset)
+def boundary_placement_rate(dataset, coder=None):
+    if coder is not None:
+        return (boundaries_placed(dataset, coder)
+                / potential_boundaries(dataset))
+    else:
+        return (boundaries_placed(dataset)
+                / (potential_boundaries(dataset) * len(dataset.coders)))
 
 def boundary_ratios_for(dataset):
     d = collections.defaultdict(dict)
@@ -155,11 +178,16 @@ def boundary_ratios_for(dataset):
             d[item][coder] = (actual_boundaries, possible_boundaries)
     return d
 
-def all_segmentations_of(dataset, item):
-    return list(it.chain.from_iterable(dataset[item].values()))
+def all_segments_of(dataset, item=None):
+    if item is not None:
+        return tuple(it.chain.from_iterable(
+            dataset[item].values()))
+    else:
+        return tuple(it.chain.from_iterable(
+            [ all_segments_of(dataset, i) for i in dataset.keys() ]))
 
 def null_segmentations_for(dataset):
-    return se.data.Dataset({ item: { 'NULL': (total_mass(dataset, item),) } 
+    return se.data.Dataset({ item: { 'NULL': (total_mass(dataset, item),) }
                              for item in dataset.keys() })
 
 def random_segmentation_of(dataset, item, ratio):
@@ -175,25 +203,32 @@ def random_segmentation_of(dataset, item, ratio):
 
 def random_segmentations_for(dataset):
     d = collections.defaultdict(dict)
-    boundary_ratios = boundary_ratios_for(dataset)
-    for item, coder_ratios in boundary_ratios.items():
-        p_of_b = micro_mean(coder_ratios.values())
-        d[item]['RANDOM'] = random_segmentation_of(dataset, item, p_of_b)
+    p_b = boundary_placement_rate(dataset)
+    for item in dataset.keys():
+        d[item]['RANDOM'] = random_segmentation_of(dataset, item, p_b)
     return se.data.Dataset(d)
 
-def regular_segmentation_of(dataset, item, num_segments):
+def uniform_segmentation_of(dataset, item, target_mass):
     total_m = total_mass(dataset, item)
-    segment_m = math.floor(total_m / num_segments)
-    remainder = total_m % num_segments
-    masses = [segment_m] * num_segments
-    for i in range(remainder):
-        masses[i] += 1
+    n_segments = round(total_m / target_mass)
+    segment_m = round(total_m / n_segments)
+    masses = [segment_m] * n_segments
+    remainder = math.floor((total_m - (n_segments * segment_m)) / n_segments)
+    for i in range(len(masses)):
+        masses[i] += remainder
+    masses[-1] += (total_m - (n_segments * segment_m)) % n_segments
+    assert sum(masses) == total_m
     return masses
 
-def regular_segmentations_for(dataset):
+def uniform_segmentations_for(dataset):
+    uniform_segment_mass = math.ceil(np.median(all_segments_of(dataset)))
     d = collections.defaultdict(dict)
-    for item, coder_segmentations in dataset.items():
-        num_segments = int(round(np.mean(np.array([ len(s) for s in coder_segmentations.values() ]))))
-        d[item]['REGULAR'] = regular_segmentation_of(dataset, item, num_segments)
+    for item in dataset.keys():
+        d[item]['UNIFORM'] = uniform_segmentation_of(
+            dataset, item, uniform_segment_mass)
     return se.data.Dataset(d)
 
+def keep(dataset, items):
+    return se.data.Dataset({ item: segmentations
+                             for item, segmentations in dataset.items()
+                             if item in items })
