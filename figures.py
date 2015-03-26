@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import itertools as it
 
-from brewer2mpl import qualitative
+from brewer2mpl import qualitative, sequential
 
 from helpers import mean_std_n
 
@@ -123,6 +123,25 @@ def box_plot(values, labels, title):
     
     plt.xlabel(title, color=ALMOST_BLACK)
 
+    plt.savefig(title_to_filename(title) + '.svg')
+    plt.show()
+
+def bar_chart(values, labels, value_labels, title):
+    bottom = np.arange(len(labels)) * 0.4 + 0.1
+    height = 0.2
+    data = np.array(values)
+    left = np.vstack((np.zeros((data.shape[1],), dtype=data.dtype), np.cumsum(data, axis=0)[:-1]))
+    colors = sequential.Greys[len(data)].mpl_colors
+    rectangles = [ plt.barh(bottom, d, height, left=l, color=c, edgecolor='None')[0]
+                   for d,c,l in zip(data, colors, left) ]
+    leg = plt.legend(rectangles, value_labels, frameon=False)
+    for t in leg.texts: t.set_color(ALMOST_BLACK)
+    plt.yticks(bottom+height/2., labels)
+    plt.tick_params(axis='x', direction='in', labeltop='on', colors=ALMOST_BLACK)
+    plt.tick_params(axis='y', left='off', right='off', colors=ALMOST_BLACK)
+    plt.xlabel(title, color=ALMOST_BLACK)
+    for spine in plt.gca().spines.values():
+        spine.set_visible(False)
     plt.savefig(title_to_filename(title) + '.svg')
     plt.show()
     
