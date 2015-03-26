@@ -28,8 +28,8 @@ def plot(x, y, xlabel, ylabel):
 
 # Draw a Cleveland-style dot plot with possibly multiple values per label
 def dot_plot(values, labels, title, sort=True,
-             value_labels=None, minv=None, draw_mean_std=False,
-             color_offset=0, draw_line=None):
+             value_labels=None, minv=None, maxv=None, draw_mean_std=False,
+             color_offset=0, draw_line=None, errors=None, ns=None):
 
     if len(values) == 0: return
 
@@ -49,6 +49,9 @@ def dot_plot(values, labels, title, sort=True,
     else:
         colors = [ ALMOST_BLACK ]
 
+    if errors or ns:
+        sort = False
+
     if sort:
         # order by mean of the multiple values
         means = [ np.mean(np.array(list(v), dtype=float)) for v in zip(*values) ]
@@ -59,7 +62,8 @@ def dot_plot(values, labels, title, sort=True,
 
     if minv is None:
         minv = float(min(it.chain(*values)))
-    maxv = float(max(it.chain(*values)))
+    if maxv is None:
+        maxv = float(max(it.chain(*values)))
     width = maxv - minv
     left = minv - 0.05 * width
     right = maxv + 0.05 * width
@@ -68,7 +72,7 @@ def dot_plot(values, labels, title, sort=True,
     plt.ylim(-1, len(labels))
 
     plt.yticks(y, labels);
-    plt.tick_params(axis='x', direction='in', colors=ALMOST_BLACK)
+    plt.tick_params(axis='x', direction='in', labeltop='on', colors=ALMOST_BLACK)
     plt.tick_params(axis='y', left='off', right='off', colors=ALMOST_BLACK)
 
     for spine in plt.gca().spines.values():
@@ -79,7 +83,13 @@ def dot_plot(values, labels, title, sort=True,
     plt.xlabel(title, color=ALMOST_BLACK)
 
     for v, color, label in zip(values, colors, value_labels):
+        if errors is not None:
+            plt.errorbar(v, y, xerr=errors, color=ALMOST_BLACK, linestyle='None')
         plt.plot(v, y, 'o', color=color, alpha=0.75, label=label)
+
+    if ns is not None:
+        for n,yval in zip(ns,y):
+            plt.annotate('n=%s' % n, (right, yval), textcoords='offset points', xytext=(4,-2))
 
     if draw_line is not None:
         if draw_mean_std:
