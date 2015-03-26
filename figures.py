@@ -32,18 +32,18 @@ def dot_plot(values, labels, title, sort=True,
              color_offset=0, draw_line=None):
 
     if len(values) == 0: return
-    
+
     if isinstance(values[0], (list, tuple)):
         draw_mean_std = False
     else:
         values = [ values ]
 
     draw_legend = True
-    
+
     if not value_labels:
         value_labels = [''] * len(labels)
         draw_legend = False
-        
+
     if len(values) > 1:
         colors = qualitative.Set2[len(values) + color_offset].mpl_colors[color_offset:]
     else:
@@ -66,18 +66,18 @@ def dot_plot(values, labels, title, sort=True,
 
     plt.xlim(left, right)
     plt.ylim(-1, len(labels))
-    
+
     plt.yticks(y, labels);
     plt.tick_params(axis='x', direction='in', colors=ALMOST_BLACK)
     plt.tick_params(axis='y', left='off', right='off', colors=ALMOST_BLACK)
-    
+
     for spine in plt.gca().spines.values():
         spine.set_visible(False)
-    
+
     plt.hlines(y, left, right, linestyles='dotted',
                linewidths=0.5, colors=ALMOST_BLACK)
     plt.xlabel(title, color=ALMOST_BLACK)
-    
+
     for v, color, label in zip(values, colors, value_labels):
         plt.plot(v, y, 'o', color=color, alpha=0.75, label=label)
 
@@ -85,18 +85,18 @@ def dot_plot(values, labels, title, sort=True,
         if draw_mean_std:
             raise Exception('Cannot use draw_line and draw_mean_std together')
         plt.vlines(draw_line, 0, len(labels)-1, colors=[ALMOST_BLACK])
-        
+
     if draw_mean_std:
         mean, std, n = mean_std_n(values)
         plt.vlines(mean, 0, len(labels)-1, colors=[ALMOST_BLACK])
         plt.vlines([mean-std, mean+std], 0, len(labels)-1, colors=[DARK_GRAY])
-        
+
     if draw_legend:
         leg = plt.legend(frameon=True, numpoints=1, loc='center',
                          bbox_to_anchor=(1,0.5))
         plt.setp(leg.get_frame(), facecolor=LIGHT_GRAY, edgecolor='none')
         for t in leg.texts: t.set_color(ALMOST_BLACK)
-    
+
     plt.savefig(title_to_filename(title) + '.svg')
     plt.show()
 
@@ -120,7 +120,7 @@ def box_plot(values, labels, title):
 
     for spine in plt.gca().spines.values():
         spine.set_visible(False)
-    
+
     plt.xlabel(title, color=ALMOST_BLACK)
 
     plt.savefig(title_to_filename(title) + '.svg')
@@ -144,7 +144,7 @@ def bar_chart(values, labels, value_labels, title):
         spine.set_visible(False)
     plt.savefig(title_to_filename(title) + '.svg')
     plt.show()
-    
+
 def histogram(values, bins, title):
     plt.hist(values, bins=bins, color=DARK_GRAY, edgecolor=DARK_GRAY)
     plt.xlabel(title, color=ALMOST_BLACK)
@@ -153,15 +153,15 @@ def histogram(values, bins, title):
 
 def heatmap(values, row_labels, column_labels, title, scale_w=0.8, scale_h=2.0):
     array = np.array(values, dtype=float)
-    
+
     assert(array.shape[1] == len(column_labels))
     assert(array.shape[0] == len(row_labels))
-    
+
     # Thanks https://stackoverflow.com/questions/14391959/heatmap-in-matplotlib-with-pcolor
     fig, ax = plt.subplots()
     collection = ax.pcolor(array, vmin=0, vmax=1, cmap=plt.cm.binary, alpha=0.8)
     fig.colorbar(collection)
-    
+
     # put the major ticks at the middle of each cell
     ax.set_xticks(np.arange(array.shape[1])+0.5, minor=False)
     ax.set_yticks(np.arange(array.shape[0])+0.5, minor=False)
@@ -173,13 +173,13 @@ def heatmap(values, row_labels, column_labels, title, scale_w=0.8, scale_h=2.0):
     plt.xlabel(title, color=ALMOST_BLACK)
     ax.set_xticklabels(column_labels, minor=False)
     ax.set_yticklabels(row_labels, minor=False)
-    
+
     w,h = fig.get_size_inches()
     plt.gcf().set_size_inches([w*scale_w, h*scale_h])
     plt.ylim(len(row_labels), 0)
     plt.tick_params(axis='x', top='off', bottom='off', colors=ALMOST_BLACK)
     plt.tick_params(axis='y', left='off', right='off', colors=ALMOST_BLACK)
-    
+
     plt.savefig(title_to_filename(title) + '.svg')
     plt.show()
 

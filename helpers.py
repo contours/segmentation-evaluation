@@ -103,7 +103,7 @@ def pi_z_test(dataset):
 
     a = pi(dataset) + (Decimal(1) / (n_possible_boundaries*(n_coders-1)))
     b = ( (n_possible_boundaries*n_coders*(n_coders-1)) / Decimal(2) )**Decimal(0.5)
-    
+
     return a * b
 
 def kappa(dataset):
