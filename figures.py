@@ -27,9 +27,10 @@ def plot(x, y, xlabel, ylabel):
     plt.show()
 
 # Draw a Cleveland-style dot plot with possibly multiple values per label
-def dot_plot(values, labels, title, sort=True,
+def dot_plot(values, labels, title, ytitle=None, sort=True,
              value_labels=None, minv=None, maxv=None, draw_mean_std=False,
-             color_offset=0, draw_line=None, errors=None, ns=None):
+             color_offset=0, draw_line=None, errors=None, ns=None,
+             scale_w=1.0, scale_h=1.0):
 
     if len(values) == 0: return
 
@@ -81,6 +82,7 @@ def dot_plot(values, labels, title, sort=True,
     plt.hlines(y, left, right, linestyles='dotted',
                linewidths=0.5, colors=ALMOST_BLACK)
     plt.xlabel(title, color=ALMOST_BLACK)
+    if ytitle: plt.ylabel(ytitle, color=ALMOST_BLACK)
 
     for v, color, label in zip(values, colors, value_labels):
         if errors is not None:
@@ -107,6 +109,9 @@ def dot_plot(values, labels, title, sort=True,
         plt.setp(leg.get_frame(), facecolor=LIGHT_GRAY, edgecolor='none')
         for t in leg.texts: t.set_color(ALMOST_BLACK)
 
+    w,h = plt.gcf().get_size_inches()
+    plt.gcf().set_size_inches([w*scale_w, h*scale_h])
+        
     plt.savefig(title_to_filename(title) + '.svg')
     plt.show()
 
@@ -136,7 +141,8 @@ def box_plot(values, labels, title):
     plt.savefig(title_to_filename(title) + '.svg')
     plt.show()
 
-def bar_chart(values, labels, value_labels, title):
+def bar_chart(values, labels, value_labels, title, scale_w=1.0, scale_h=1.0,
+              legend_x=1.0):
     bottom = np.arange(len(labels)) * 0.4 + 0.1
     height = 0.2
     data = np.array(values)
@@ -144,21 +150,33 @@ def bar_chart(values, labels, value_labels, title):
     colors = sequential.Greys[len(data)].mpl_colors
     rectangles = [ plt.barh(bottom, d, height, left=l, color=c, edgecolor='None')[0]
                    for d,c,l in zip(data, colors, left) ]
-    leg = plt.legend(rectangles, value_labels, frameon=False)
-    for t in leg.texts: t.set_color(ALMOST_BLACK)
     plt.yticks(bottom+height/2., labels)
     plt.tick_params(axis='x', direction='in', labeltop='on', colors=ALMOST_BLACK)
     plt.tick_params(axis='y', left='off', right='off', colors=ALMOST_BLACK)
     plt.xlabel(title, color=ALMOST_BLACK)
     for spine in plt.gca().spines.values():
         spine.set_visible(False)
+
+    w,h = plt.gcf().get_size_inches()
+    plt.gcf().set_size_inches([w*scale_w, h*scale_h])
+
+    leg = plt.legend(rectangles, value_labels, frameon=False,
+                     loc='lower left', bbox_to_anchor=(legend_x,0.5),
+                     fontsize='medium')
+    for t in leg.texts: t.set_color(ALMOST_BLACK)
+
     plt.savefig(title_to_filename(title) + '.svg')
     plt.show()
 
-def histogram(values, bins, title):
+def histogram(values, bins, title, ytitle=None, scale_w=1.0, scale_h=1.0):
     values = np.array(values, dtype=float)
     plt.hist(values, bins=bins, color=DARK_GRAY, edgecolor=DARK_GRAY)
     plt.xlabel(title, color=ALMOST_BLACK)
+    if ytitle: plt.ylabel(ytitle, color=ALMOST_BLACK)
+
+    w,h = plt.gcf().get_size_inches()
+    plt.gcf().set_size_inches([w*scale_w, h*scale_h])
+
     plt.savefig(title_to_filename(title) + '.svg')
     plt.show()
 
